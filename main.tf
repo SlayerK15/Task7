@@ -1,4 +1,3 @@
-#push1
 provider "aws" {
   region = var.aws_region
 }
@@ -96,21 +95,67 @@ resource "aws_ecs_task_definition" "medusa_task" {
   family                   = "medusa-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = "1024"
+  memory                   = "2048"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
+      name      = "postgres-container"
+      image     = "postgres:13-alpine"
+      essential = true
+      memory    = 512
+      cpu       = 256
+      environment = [
+        {
+          name  = "POSTGRES_USER"
+          value = "medusa_user"
+        },
+        {
+          name  = "POSTGRES_PASSWORD"
+          value = "medusa_password"
+        },
+        {
+          name  = "POSTGRES_DB"
+          value = "medusa_db"
+        }
+      ]
+      portMappings = [
+        {
+          containerPort = 5432
+          hostPort      = 5432
+          protocol      = "tcp"
+        }
+      ]
+    },
+    {
       name      = "medusa-container"
       image     = var.image_uri
       essential = true
+      memory    = 1536
+      cpu       = 768
+      environment = [
+        {
+          name  = "DATABASE_URL"
+          value = "postgres://medusa_user:medusa_password@localhost:5432/medusa_db"
+        },
+        {
+          name  = "NODE_ENV"
+          value = "production"
+        }
+      ]
       portMappings = [
         {
           containerPort = 9000
           hostPort      = 9000
           protocol      = "tcp"
+        }
+      ]
+      dependsOn = [
+        {
+          containerName = "postgres-container"
+          condition     = "START"
         }
       ]
     }
@@ -124,9 +169,6 @@ resource "aws_ecs_service" "medusa_service" {
   task_definition = aws_ecs_task_definition.medusa_task.arn
   desired_count   = 1
 
-  # Remove the launch_type parameter
-  # launch_type = "FARGATE"
-
   network_configuration {
     subnets         = aws_subnet.public[*].id
     security_groups = [aws_security_group.ecs_service.id]
@@ -139,3 +181,5 @@ resource "aws_ecs_service" "medusa_service" {
   }
 }
 
+# Data source for Availability Zones
+data "aws_availability_zones" "available" {}
