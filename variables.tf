@@ -20,6 +20,3 @@ variable "image_uri" {
   description = "The URI of the Docker image to deploy"
   type        = string
 }
-
-# Data source for Availability Zones
-data "aws_availability_zones" "available" {}
