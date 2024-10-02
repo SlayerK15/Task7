@@ -124,7 +124,8 @@ resource "aws_ecs_service" "medusa_service" {
   task_definition = aws_ecs_task_definition.medusa_task.arn
   desired_count   = 1
 
-  launch_type = "FARGATE"
+  # Remove the launch_type parameter
+  # launch_type = "FARGATE"
 
   network_configuration {
     subnets         = aws_subnet.public[*].id
@@ -137,3 +138,4 @@ resource "aws_ecs_service" "medusa_service" {
     weight            = 1
   }
 }
+
